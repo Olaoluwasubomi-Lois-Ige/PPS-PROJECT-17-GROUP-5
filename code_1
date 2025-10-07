@@ -6,55 +6,89 @@ def license_plate_detector():
         > The user can type 'e' to exit the program.
     Output:
         > Returns:
+            - 
             - "Detected License Plates:" followed by all valid plates found.
             - "Total unique plates found: <number>"
             - Or "No valid license plates found," if none are detected.
         > Ends with "Exiting the program... Goodbye!!!" when the user quits.
     """
 
-    print("=" * 36)
+    print("=" * 39)
     print("   Senegalese License Plate Detector   ")
-    print("=" * 36)
+    print("=" * 39)
 
     while True:
-        # >>> Step 1:Ask user for input
-        user_input = input("\nPlease enter your text (or 'e' to exit'):\n" ).strip()
+        # >>> Step 1: Ask user for input
+        user_input = input("\nPlease enter your text (or 'e' to exit'):\n").strip()
+        print()
+        try:
+            if not user_input:
+                raise ValueError("You entered nothing, please provide text before pressing Enter.")
+        except ValueError as err:
+            print(f"[Warning] {err}")
+            continue
+            
         # Exit condition
-        if user_input == 'e':
+        if user_input.lower() == 'e':
             print("Exiting the program... Goodbye!!!")
             break
 
-        # >>> Step 2: Normalize the text
+        # >>> Step 2: Normalize user input
         text = user_input.upper()
 
-        # >>> Step 3: Split into rough tokens
-        plate_num = text.split()
-        # Remove punctuation from edges
-        punctuation_marks = r"""~`!“”@#$%^&*()_+=|\{[]};:''""/?.>,<"""
-        plate_num = [i.strip(punctuation_marks) for i in plate_num]
+        # Fix all inconsistent hyphen spacing, even mixed cases like ' - 1234 - '
+        while " -" in text or "- " in text:
+            text = text.replace(" -", "-").replace("- ", "-")
+     
+        # Replace punctuation with a space (to separate plates from trailing punctuation)
+        punctuation_marks = [
+            ",", ";", ":", ".", "!", "?", "~", "`", "“", "”", "@", "#", "$", "%",
+            "^", "&", "*", "(", ")", "_", "+", "=", "|", "{", "[", "]", "}", "'",
+            "\"", "/", ">", "<"
+        ]
+        for sep in punctuation_marks:
+            text = text.replace(sep, " ")
+        while "  " in text:
+            text = text.replace("  ", " ")
 
+        # >>> Step 3: Split into tokens
+        word_list = text.split()
         found = []
 
-        # >>> Step 4: Build combined tokens (handle spaces in plates)
+        # >>> Step 4: Detect valid plates
         i = 0
-        while i < len(plate_num):
-            token = plate_num[i]
+        while i < len(word_list):
+            token = word_list[i]
+            duplicate_separators = False
 
-            # Try to form a 3-part plate
-            if i + 2 < len(plate_num):
-                possible = f"{plate_num[i]} {plate_num[i+1]} {plate_num[i+2]}"
-                # Quick shape check: 2 letters, 4 digits, 1-2 letters
-                if len(plate_num[i]) == 2 and plate_num[i].isalpha() \
-                   and len(plate_num[i+1]) == 4 and plate_num[i+1].isdigit() \
-                   and plate_num[i+2].isalpha() and len(plate_num[i+2]) in (1, 2):
-                    token = possible
-                    i += 2  # skip next two tokens since we used them
-                    token = token.replace(" ", "-") # Replace single spaces with hyphens
-            # Split into parts
+            # Detect and clean duplicate hyphens inside each token
+            if "--" in token:
+                duplicate_separators = True
+            while "--" in token:
+                token = token.replace("--", "-")
+        
+            # Detect glued-together plates (no hyphens or spaces)
+            if token.isalnum():
+                if len(token) in (7, 8):
+                    prefix = token[:2]
+                    middle = token[2:6]
+                    suffix = token[6:]
+                    if prefix.isalpha() and middle.isdigit() and suffix.isalpha() and len(suffix) in (1, 2):
+                        print(f"[WARNING] '{token}' looks like a valid plate but is missing separators (- or space).")
+                        # Don’t add, just skip to next
+
+            # Handle space-separated 3-part forms
+            if i + 2 < len(word_list):
+                part1, part2, part3 = word_list[i], word_list[i+1], word_list[i+2]
+                if len(part1) == 2 and part1.isalpha() and len(part2) == 4 and part2.isdigit() and len(part3) in (1, 2) and part3.isalpha():
+                    token = f"{part1}-{part2}-{part3}"
+                    i += 2  # consume next two tokens
+
             plate_sec = token.split("-")
             if len(plate_sec) != 3:
                 i += 1
                 continue
+
             sec_1, sec_2, sec_3 = plate_sec
             # Validate structure
             if len(sec_1) != 2 or not sec_1.isalpha():
@@ -66,17 +100,22 @@ def license_plate_detector():
             if not (len(sec_3) in (1, 2) and sec_3.isalpha()):
                 i += 1
                 continue
-            if token not in found:
+
+            # Avoid duplicates
+            if token in found:
+                print(f"[WARNING] Duplicate plate detected: {token} (ignored).")
+            else:
                 found.append(token)
+                if duplicate_separators:
+                    print(f"[WARNING] '{token}' appeared valid but had duplicate '-' separators. Cleaned automatically.")
 
             i += 1
 
         # >>> Step 5: Print results
         if found:
             print("\nThe detected Senegalese vehicle license plate number(s):\n")
-            for i,j in enumerate(found, 1):
-                print(f"{i}. {j}")
-                print()
+            for idx, plate in enumerate(found, 1):
+                print(f"{idx}. {plate}\n")
             print(f"The total correct Senegalese plates numbers found are {len(found)}")
         else:
             print("No valid license plate detected.")
