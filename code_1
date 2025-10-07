@@ -1,0 +1,82 @@
+def license_plate_detector():
+    """
+    This function detects the presence of Senegalese vehicle license plate numbers inside any text string.
+    Input:
+        > The user types any text (can contain words, numbers, or possible license plates), e.g., "xy-1234-t was seen near zz 9999 at."
+        > The user can type 'e' to exit the program.
+    Output:
+        > Returns:
+            - "Detected License Plates:" followed by all valid plates found.
+            - "Total unique plates found: <number>"
+            - Or "No valid license plates found," if none are detected.
+        > Ends with "Exiting the program... Goodbye!!!" when the user quits.
+    """
+
+    print("=" * 36)
+    print("   Senegalese License Plate Detector   ")
+    print("=" * 36)
+
+    while True:
+        # >>> Step 1:Ask user for input
+        user_input = input("\nPlease enter your text (or 'e' to exit'):\n" ).strip()
+        # Exit condition
+        if user_input == 'e':
+            print("Exiting the program... Goodbye!!!")
+            break
+
+        # >>> Step 2: Normalize the text
+        text = user_input.upper()
+
+        # >>> Step 3: Split into rough tokens
+        plate_num = text.split()
+        # Remove punctuation from edges
+        punctuation_marks = r"""~`!“”@#$%^&*()_+=|\{[]};:''""/?.>,<"""
+        plate_num = [i.strip(punctuation_marks) for i in plate_num]
+
+        found = []
+
+        # >>> Step 4: Build combined tokens (handle spaces in plates)
+        i = 0
+        while i < len(plate_num):
+            token = plate_num[i]
+
+            # Try to form a 3-part plate
+            if i + 2 < len(plate_num):
+                possible = f"{plate_num[i]} {plate_num[i+1]} {plate_num[i+2]}"
+                # Quick shape check: 2 letters, 4 digits, 1-2 letters
+                if len(plate_num[i]) == 2 and plate_num[i].isalpha() \
+                   and len(plate_num[i+1]) == 4 and plate_num[i+1].isdigit() \
+                   and plate_num[i+2].isalpha() and len(plate_num[i+2]) in (1, 2):
+                    token = possible
+                    i += 2  # skip next two tokens since we used them
+                    token = token.replace(" ", "-") # Replace single spaces with hyphens
+            # Split into parts
+            plate_sec = token.split("-")
+            if len(plate_sec) != 3:
+                i += 1
+                continue
+            sec_1, sec_2, sec_3 = plate_sec
+            # Validate structure
+            if len(sec_1) != 2 or not sec_1.isalpha():
+                i += 1
+                continue
+            if len(sec_2) != 4 or not sec_2.isdigit():
+                i += 1
+                continue
+            if not (len(sec_3) in (1, 2) and sec_3.isalpha()):
+                i += 1
+                continue
+            if token not in found:
+                found.append(token)
+
+            i += 1
+
+        # >>> Step 5: Print results
+        if found:
+            print("\nThe detected Senegalese vehicle license plate number(s):\n")
+            for i,j in enumerate(found, 1):
+                print(f"{i}. {j}")
+                print()
+            print(f"The total correct Senegalese plates numbers found are {len(found)}")
+        else:
+            print("No valid license plate detected.")
